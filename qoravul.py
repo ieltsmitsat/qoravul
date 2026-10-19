@@ -9,7 +9,7 @@ import os
 import re
 
 # Bot tokenini kiriting
-API_TOKEN = os.getenv("BOT_TOKEN", "8986599765:AAESfGu_y9XGuyw_oYbe2-yK02x25CD4DKU")
+API_TOKEN = os.getenv("BOT_TOKEN", "8986599765:AAEf-N-ISuZ_KunDBEX94-RroV5cKd17mqY")
 
 # Bot va dispatcher ob'ektlarini yaratamiz
 bot = Bot(token=API_TOKEN)
