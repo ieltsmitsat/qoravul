@@ -8,7 +8,7 @@ import json
 import re
 
 # Bot tokenini kiriting
-API_TOKEN = "7640175151:AAEtMBHRDp1bB-x5YVB7b4kv778NqHUb0Ww"
+API_TOKEN = "8986599765:AAESfGu_y9XGuyw_oYbe2-yK02x25CD4DKU"
 
 # Bot va dispatcher ob'ektlarini yaratamiz
 bot = Bot(token=API_TOKEN)
