@@ -5,10 +5,11 @@ from aiogram.filters import Command
 from datetime import datetime, timedelta
 import asyncio
 import json
+import os
 import re
 
 # Bot tokenini kiriting
-API_TOKEN = "8986599765:AAESfGu_y9XGuyw_oYbe2-yK02x25CD4DKU"
+API_TOKEN = os.getenv("BOT_TOKEN", "8986599765:AAESfGu_y9XGuyw_oYbe2-yK02x25CD4DKU")
 
 # Bot va dispatcher ob'ektlarini yaratamiz
 bot = Bot(token=API_TOKEN)
