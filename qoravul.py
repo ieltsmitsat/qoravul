@@ -70,20 +70,47 @@ async def handle_join_leave_messages(message: types.Message):
     except Exception as e:
         print(f"Join/Leave xabarini o'chirishda xatolik: {e}")
 
+async def is_admin_user(message: types.Message) -> bool:
+    # 1. Guruh nomidan yozilgan xabar (Anonim admin)
+    if message.sender_chat and message.sender_chat.id == message.chat.id:
+        return True
+
+    # 2. Telegram tizim botlari orqali (Anonim admin yoki kanal posti)
+    # 1087968824 - @GroupAnonymousBot
+    # 136817688 - @Channel_Bot
+    # 777000 - Telegram Service
+    if message.from_user and message.from_user.id in (1087968824, 136817688, 777000):
+        return True
+
+    # 3. Agar foydalanuvchi ob'ekti bo'lmasa (kanal posti)
+    if not message.from_user:
+        return True
+
+    # 4. Foydalanuvchi admin yoki creator ekanligini tekshirish
+    try:
+        chat_member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if chat_member.status in ["administrator", "creator"]:
+            return True
+    except Exception as e:
+        print(f"get_chat_member tekshirishda xatolik: {e}")
+
+    # 5. Qo'shimcha tekshiruv: guruh adminlari ro'yxatidan izlash
+    try:
+        admins = await bot.get_chat_administrators(message.chat.id)
+        if any(admin.user.id == message.from_user.id for admin in admins):
+            return True
+    except Exception as e:
+        print(f"get_chat_administrators tekshirishda xatolik: {e}")
+
+    return False
+
 # Reklama va haqoratli xabarlarni boshqarish
 @dp.message(F.chat.type.in_({"group", "supergroup"}))
 async def filter_messages(message: types.Message):
     # Foydalanuvchi admin ekanligini tekshirish
-    try:
-        chat_member = await bot.get_chat_member(message.chat.id, message.from_user.id)
-        is_admin = chat_member.status in ["administrator", "creator"]
-    except Exception as e:
-        print(f"Foydalanuvchi maqomini aniqlashda xatolik: {e}")
-        is_admin = False
-
-    # Agar foydalanuvchi admin bo'lsa, xabarni tekshirmaymiz
-    if is_admin:
-        print(f"Admin tomonidan yuborilgan xabar: {message.text}")
+    if await is_admin_user(message):
+        sender_info = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else 'Anonim')
+        print(f"Admin tomonidan yuborilgan xabar o'tkazib yuborildi (Sender: {sender_info}): {message.text or message.caption}")
         return
 
     text_lower = (message.text or message.caption or "").lower()
@@ -94,14 +121,20 @@ async def filter_messages(message: types.Message):
         if re.search(pattern, text_lower):
             try:
                 await bot.delete_message(message.chat.id, message.message_id)
-                await bot.restrict_chat_member(
-                    chat_id=message.chat.id,
-                    user_id=message.from_user.id,
-                    permissions=ChatPermissions(can_send_messages=False),
-                    until_date=datetime.now() + timedelta(minutes=1),
-                )
-                await message.reply("Haqoratli so'zlar uchun vaqtinchalik ban berildi!")
+                if message.from_user:
+                    await bot.restrict_chat_member(
+                        chat_id=message.chat.id,
+                        user_id=message.from_user.id,
+                        permissions=ChatPermissions(can_send_messages=False),
+                        until_date=datetime.now() + timedelta(minutes=1),
+                    )
+                warn = await message.answer("Haqoratli so'zlar uchun vaqtinchalik ban berildi!")
                 print(f"Haqoratli so'z topildi va xabar o'chirildi: {hateful_word}")
+                await asyncio.sleep(5)
+                try:
+                    await bot.delete_message(message.chat.id, warn.message_id)
+                except Exception:
+                    pass
             except Exception as e:
                 print(f"Haqoratli so'zlarni qayta ishlashda xatolik: {e}")
             return
@@ -111,10 +144,15 @@ async def filter_messages(message: types.Message):
         if re.search(pattern, text_lower):
             try:
                 await bot.delete_message(message.chat.id, message.message_id)
-                await message.reply(
+                warn = await message.answer(
                     "Reklama yoki kanal havolalari yuborish taqiqlangan. Qoidalarni buzmaslikni so'raymiz!"
                 )
-                print(f"Reklama topildi va xabar o'chirildi.")
+                print(f"Reklama topildi va xabar o'chirildi (Sender: {message.from_user.id if message.from_user else 'noma\'lum'}).")
+                await asyncio.sleep(5)
+                try:
+                    await bot.delete_message(message.chat.id, warn.message_id)
+                except Exception:
+                    pass
             except Exception as e:
                 print(f"Reklama xabarini qayta ishlashda xatolik: {e}")
             return
